@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "glass",
+  "version": "0.1.0",
+  "name": "FabricGlass",
+  "description": "General Layman's Aesthetic Spying Screen for Fabric!",
+  "authors": [
+    "mineblock11"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/glass/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "mine.block.glass.client.GLASSClient"
+    ],
+    "server": [
+      "mine.block.glass.server.GLASSServer"
+    ],
+    "cardinal-components": [
+      "mine.block.glass.components.GLASSComponents"
+    ],
+    "main": [
+      "mine.block.glass.GLASS"
+    ]
+  },
+  "custom": {
+    "cardinal-components": [
+      "glass:channels",
+      "glass:linked_channels"
+    ]
+  },
+  "mixins": [
+    "GLASS.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.14.8",
+    "fabric": "*",
+    "minecraft": "1.19"
+  }
+}
