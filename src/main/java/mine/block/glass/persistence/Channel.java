@@ -9,4 +9,8 @@ public record Channel(String name, @Nullable BlockPos linkedBlock) {
     public String toString() {
         return "{Name:" + name + ",LinkedBlock" + linkedBlock + "}";
     }
+
+    public Channel removeLinkedBlock() {
+        return new Channel(name, null);
+    }
 }

@@ -1,12 +1,11 @@
 package mine.block.glass.client.gui;
 
 import io.github.cottonmc.cotton.gui.SyncedGuiDescription;
-import io.github.cottonmc.cotton.gui.widget.WButton;
-import io.github.cottonmc.cotton.gui.widget.WGridPanel;
-import io.github.cottonmc.cotton.gui.widget.WListPanel;
+import io.github.cottonmc.cotton.gui.widget.*;
 import io.github.cottonmc.cotton.gui.widget.data.Insets;
 import mine.block.glass.GLASS;
 import mine.block.glass.persistence.Channel;
+import mine.block.glass.persistence.ChannelManagerPersistence;
 import mine.block.glass.server.GLASSPackets;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
@@ -18,30 +17,34 @@ import net.minecraft.nbt.NbtList;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class TerminalBlockGUI extends SyncedGuiDescription {
     public static final ScreenHandlerType<TerminalBlockGUI> SCREEN_HANDLER_TYPE = ScreenHandlerRegistry.registerExtended(new Identifier("glass", "terminal_screen"), TerminalBlockGUI::new);
 
     public BlockPos pos;
 
-    private static final int WIDTH = 7;
-    private static final int HEIGHT = 10;
+    private static final int WIDTH = 7*18*2;
+    private static final int HEIGHT = 6*18*2;
 
-    private final WListPanel<Channel, WButton> channelList;
-    private WButton removeChannelButton;
+    private WButton unlinkChannelButton;
 
     public TerminalBlockGUI(int syncId, PlayerInventory playerInventory, PacketByteBuf context) {
         super(SCREEN_HANDLER_TYPE, syncId, playerInventory);
 
-        WGridPanel root = new WGridPanel();
+        WPlainPanel root = new WPlainPanel();
         setRootPanel(root);
 
-        root.setSize(7*18*2, 6*18*2);
+        root.setSize(WIDTH, HEIGHT);
         root.setInsets(Insets.ROOT_PANEL);
 
         pos = context.readBlockPos();
@@ -55,7 +58,7 @@ public class TerminalBlockGUI extends SyncedGuiDescription {
 
         for (int i = 0; i < _channels.size(); i++) {
             NbtCompound channel = _channels.getCompound(i);
-            @Nullable BlockPos bpos = (channel.contains("linked_pos")) ? null : BlockPos.fromLong(channel.getLong("linked_pos"));
+            @Nullable BlockPos bpos = (!channel.contains("linked_pos")) ? null : ChannelManagerPersistence.getFromIntArrayNBT("linked_pos", channel);
             Channel channel1 = new Channel(channel.getString("name"), bpos);
             channels.add(channel1);
         }
@@ -68,7 +71,9 @@ public class TerminalBlockGUI extends SyncedGuiDescription {
 
         GLASS.LOGGER.info("[GUI-CHANNELS] " + channels + " [WORLD] " + world);
 
-        channelList = new WListPanel<>(channels, WButton::new, (Channel channel, WButton btn) -> {
+        ArrayList<WButtonTooltip> channelButtons = new ArrayList<>();
+
+        WListPanel<Channel, WButtonTooltip> channelList = new WListPanel<>(channels, WButtonTooltip::new, (Channel channel, WButtonTooltip btn) -> {
 
             btn.setOnClick(() -> {
                 PacketByteBuf buf = PacketByteBufs.create();
@@ -77,41 +82,166 @@ public class TerminalBlockGUI extends SyncedGuiDescription {
 
                 ClientPlayNetworking.send(GLASSPackets.TERMINAL_CHANNEL_CHANGED.ID, buf);
 
+                for (WButton channelButton : channelButtons) {
+                    if(!channelButton.isEnabled()) {
+                        for (Channel channeles : channels) {
+                            if(Objects.equals(channel.name(), channelButton.getLabel().getString())) {
+                                if (channeles.linkedBlock() == null) {
+                                    channelButton.setEnabled(true);
+                                }
+                                break;
+                            }
+                        }
+
+                    }
+                }
+
                 btn.setEnabled(false);
-                removeChannelButton.setEnabled(true);
+                unlinkChannelButton.setEnabled(true);
             });
 
-            if(channel.linkedBlock() == pos) {
-                btn.setEnabled(false);
+            if (channel.linkedBlock() != null) {
+                if (pos.asLong() == channel.linkedBlock().asLong()) {
+                    btn.setEnabled(false);
+                }
+                else {
+                    btn.setEnabled(false);
+                    btn.setTooltip(Text.literal("Channel is being used by another terminal."), Text.literal(channel.linkedBlock().toShortString()).formatted(Formatting.GRAY, Formatting.ITALIC));
+                }
             }
 
             btn.setLabel(Text.literal(channel.name()));
+
+            channelButtons.add(btn);
         });
 
         channelList.setListItemHeight(18);
-        root.add(channelList, 0, 1, WIDTH, HEIGHT - 1);
+        root.add(channelList, 5, 10, (WIDTH/2) - 10, HEIGHT - 10);
 
-        removeChannelButton = new WButton();
+        unlinkChannelButton = new WButton();
 
-        removeChannelButton.setOnClick(() -> {
+        unlinkChannelButton.setOnClick(() -> {
             PacketByteBuf buf = PacketByteBufs.create();
             buf.writeBlockPos(pos);
             buf.writeString("");
 
-            channelList.layout();
-
             ClientPlayNetworking.send(GLASSPackets.REMOVE_LINKED_CHANNEL.ID, buf);
+
+            for (WButton channelButton : channelButtons) {
+                if(!channelButton.isEnabled()) {
+                    for (Channel channel : channels) {
+                        if(Objects.equals(channel.name(), channelButton.getLabel().getString())) {
+                            channelButton.setEnabled(channel.linkedBlock() == null);
+                            break;
+                        }
+                    }
+
+                }
+            }
+
+            unlinkChannelButton.setEnabled(false);
         });
 
-        removeChannelButton.setLabel(Text.literal("Unlink From Channel"));
+        unlinkChannelButton.setLabel(Text.literal("Unlink Terminal"));
 
-        if(channels.stream().filter(channel -> channel.linkedBlock() == pos).toList().isEmpty()) {
-            removeChannelButton.setEnabled(false);
+        unlinkChannelButton.setEnabled(false);
+
+        for (Channel channel : channels) {
+            if(channel.linkedBlock() != null) {
+                if(channel.linkedBlock().asLong() == pos.asLong())
+                {
+                    unlinkChannelButton.setEnabled(true);
+                    break;
+                }
+            }
         }
 
-        removeChannelButton.setSize(8, 10);
+        AtomicReference<String> channelNameBoxValue = new AtomicReference<>("");
 
-        root.add(removeChannelButton, 0, 1);
+        WTextField channelNameBox = new WTextField(Text.literal("Channel Name"));
+        channelNameBox.setChangedListener(channelNameBoxValue::set);
+
+        root.add(channelNameBox, (WIDTH/2), 10, (WIDTH/2) - 6, 20);
+
+        WButton addChannel = new WButton();
+        addChannel.setOnClick(() -> {
+            String val = channelNameBoxValue.get();
+            if(val.isBlank()) {
+                addChannel.setLabel(Text.literal("Invalid Channel Name").formatted(Formatting.RED));
+                new Timer().schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        addChannel.setLabel(Text.literal("Add Channel"));
+                    }
+                }, 1000);
+            } else {
+
+                channels.add(new Channel(channelNameBoxValue.get(), null));
+
+                ClientPlayNetworking.send(GLASSPackets.CREATE_CHANNEL.ID, PacketByteBufs.create().writeString(channelNameBoxValue.get()));
+
+                channelList.layout();
+                channelNameBoxValue.set("");
+                channelNameBox.setText("");
+                channelNameBox.releaseFocus();
+                addChannel.setLabel(Text.literal("Added!").formatted(Formatting.GREEN));
+                new Timer().schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        addChannel.setLabel(Text.literal("Add Channel"));
+                    }
+                }, 1000);
+            }
+        });
+
+        addChannel.setLabel(Text.literal("Add Channel"));
+
+        root.add(addChannel, (WIDTH/2), 35, (WIDTH/2) - 5, 20);
+
+        WButton removeChannel = new WButton();
+        removeChannel.setOnClick(() -> {
+            String val = channelNameBoxValue.get();
+            if(val.isBlank()) {
+                removeChannel.setLabel(Text.literal("Invalid Channel Name").formatted(Formatting.RED));
+                new Timer().schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        removeChannel.setLabel(Text.literal("Remove Channel"));
+                    }
+                }, 1000);
+            } else {
+                for (Channel channel : channels) {
+                    if(Objects.equals(channel.name(), val)) {
+                        ClientPlayNetworking.send(GLASSPackets.DELETE_CHANNEL.ID, PacketByteBufs.create().writeString(channel.name()));
+                        channels.remove(channel);
+                        channelList.layout();
+                        removeChannel.setLabel(Text.literal("Removed!").formatted(Formatting.GREEN));
+                        new Timer().schedule(new TimerTask() {
+                            @Override
+                            public void run() {
+                                removeChannel.setLabel(Text.literal("Remove Channel"));
+                            }
+                        }, 1000);
+                        return;
+                    }
+                }
+                removeChannel.setLabel(Text.literal("Invalid Channel").formatted(Formatting.RED));
+                new Timer().schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        removeChannel.setLabel(Text.literal("Remove Channel"));
+                    }
+                }, 1000);
+            }
+        });
+        removeChannel.setLabel(Text.literal("Remove Channel"));
+
+        root.add(removeChannel, (WIDTH/2), 60, (WIDTH/2) - 5, 20);
+        root.add(unlinkChannelButton, (WIDTH/2), 85, (WIDTH/2) - 5, 20);
+
+        WLabel previewLabel = new WLabel(Text.literal("Preview").formatted(Formatting.GRAY));
+
+        root.add(previewLabel, (WIDTH/2), 110, (WIDTH/2) - 5, 5);
 
         root.validate(this);
     }

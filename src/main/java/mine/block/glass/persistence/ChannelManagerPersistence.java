@@ -3,7 +3,9 @@ package mine.block.glass.persistence;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtIntArray;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.PersistentState;
 import net.minecraft.world.World;
@@ -22,7 +24,10 @@ import java.util.stream.Stream;
  */
 public class ChannelManagerPersistence extends PersistentState implements Collection<Channel> {
 
-    public static final HashMap<World, ChannelManagerPersistence> MANAGERS = new HashMap<>();
+    public static ChannelManagerPersistence get(World world) {
+        return (ChannelManagerPersistence) ((ServerWorld) world).getPersistentStateManager().get(ChannelManagerPersistence::gather, "glass_channels");
+    }
+
     private static final Logger LOGGER = LogManager.getLogger("ChannelManagerPersistence");
 
     private final ArrayList<Channel> CHANNELS = new ArrayList<>();
@@ -36,13 +41,28 @@ public class ChannelManagerPersistence extends PersistentState implements Collec
             NbtCompound item = new NbtCompound();
             item.putString("name", channel.name());
             if(channel.linkedBlock() != null)
-                item.putLong("linked_pos", channel.linkedBlock().asLong());
-
+                item.putIntArray("linked_pos", getIntArrayFromBlockPos(channel.linkedBlock()));
+            channels.add(item);
         }
 
         nbt.put("channels", channels);
 
         return nbt;
+    }
+
+    @Override
+    public void setDirty(boolean dirty) {
+        LOGGER.info("Marked Dirty - " + CHANNELS);
+        super.setDirty(dirty);
+    }
+
+    public static int[] getIntArrayFromBlockPos(BlockPos z) {
+        return new int[] {z.getX(), z.getY(), z.getZ()};
+    }
+
+    public static BlockPos getFromIntArrayNBT(String key, NbtCompound compound) {
+        int[] ints = compound.getIntArray(key);
+        return new BlockPos(ints[0], ints[1], ints[2]);
     }
 
     private static PersistentState gather(NbtCompound compound) {
@@ -53,9 +73,11 @@ public class ChannelManagerPersistence extends PersistentState implements Collec
 
         for (int i = 0; i < channels.size(); i++) {
             NbtCompound channel = channels.getCompound(i);
-            @Nullable BlockPos bpos = (channel.contains("linked_pos")) ? null : BlockPos.fromLong(channel.getLong("linked_pos"));
+
+            @Nullable BlockPos bpos = (!channel.contains("linked_pos")) ? null : getFromIntArrayNBT("linked_pos", channel);
             Channel channel1 = new Channel(channel.getString("name"), bpos);
             persistence.CHANNELS.add(channel1);
+            LOGGER.info("Loaded Channel: " + channel1);
         }
 
         return persistence;
@@ -64,7 +86,6 @@ public class ChannelManagerPersistence extends PersistentState implements Collec
     public static void init() {
         ServerWorldEvents.LOAD.register((server, world) -> {
             PersistentState state = world.getPersistentStateManager().getOrCreate(ChannelManagerPersistence::gather, ChannelManagerPersistence::new, "glass_channels");
-            MANAGERS.put(world, (ChannelManagerPersistence) state);
             LOGGER.info("Loaded ChannelManagerPersistence for: " + world.getDimensionKey().getValue() + " at " + world);
         });
     }

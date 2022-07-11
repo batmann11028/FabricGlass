@@ -18,11 +18,15 @@ import net.minecraft.util.math.BlockPos;
 
 import javax.annotation.Nullable;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 public enum GLASSPackets {
     TERMINAL_CHANNEL_CHANGED(null, GLASSPackets::onTerminalChannelChanged, null),
     REMOVE_LINKED_CHANNEL(null, GLASSPackets::onRemoveLinkedChannel, null),
-    POPULATE_DEFAULT_CHANNEL(null, GLASSPackets::onPopulateDefaultChannel, null)
+    POPULATE_DEFAULT_CHANNEL(null, GLASSPackets::onPopulateDefaultChannel, null),
+
+    DELETE_CHANNEL(null, GLASSPackets::onDeleteChannel, null),
+    CREATE_CHANNEL(null, GLASSPackets::onCreateChannel, null)
 
     ;
 
@@ -70,9 +74,26 @@ public enum GLASSPackets {
                 terminal.channel = channel;
                 terminal.markDirty();
 
-                var channelManager = ChannelManagerPersistence.MANAGERS.get(player.getWorld());
+                var channelManager = ChannelManagerPersistence.get(player.getWorld());
 
-                channelManager.removeIf(channels -> channels.linkedBlock() == pos);
+                AtomicReference<Channel> old = new AtomicReference<>();
+
+                channelManager.forEach(channel1 -> {
+                    if(channel1.linkedBlock() != null)
+                    {
+                        if(channel1.linkedBlock().asLong() == pos.asLong()) {
+                            old.set(channel1);
+                        }
+                    }
+                });
+
+                if(old.get() != null) {
+                    Channel channel1 = old.get();
+                    channelManager.remove(channel1);
+                    channelManager.add(channel1.removeLinkedBlock());
+                }
+
+                channelManager.removeIf(channels -> channels.name().equals(channel));
 
                 channelManager.add(new Channel(channel, pos));
             }
@@ -83,29 +104,50 @@ public enum GLASSPackets {
         BlockPos pos = buf.readBlockPos();
 
         server.executeSync(() -> {
-            var channelManager = ChannelManagerPersistence.MANAGERS.get(player.getWorld());
+            var channelManager = ChannelManagerPersistence.get(player.getWorld());
 
             var entity = player.getWorld().getBlockEntity(pos);
 
             String cachedChannel = "";
 
             if(entity instanceof TerminalBlockEntity terminal) {
-                cachedChannel = terminal.channel;
+                cachedChannel = new String(terminal.channel.toCharArray());
                 terminal.channel = "";
                 terminal.markDirty();
             }
 
-            channelManager.removeIf(channels -> channels.linkedBlock() == pos);
+            channelManager.removeIf(channels -> {
+                if(channels.linkedBlock() != null) {
+                    return channels.linkedBlock().asLong() == pos.asLong();
+                }
+                return false;
+            });
             channelManager.add(new Channel(cachedChannel, null));
 
         });
     }
 
     private static void onPopulateDefaultChannel(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketByteBuf buf, PacketSender responseSender) {
-        var channelManager = ChannelManagerPersistence.MANAGERS.get(player.getWorld());
+        var channelManager = ChannelManagerPersistence.get(player.getWorld());
 
-        if(!channelManager.stream().filter(channel -> Objects.equals(channel.name(), "Default")).toList().isEmpty()) return;
+        if(channelManager.stream().anyMatch(channel -> channel.name().equals("Default"))) return;
 
         channelManager.add(new Channel("Default", null));
+    }
+
+    private static void onDeleteChannel(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketByteBuf buf, PacketSender responseSender) {
+        String channel = buf.readString();
+
+        var channelManager = ChannelManagerPersistence.get(player.getWorld());
+
+        channelManager.removeIf(channel1 -> Objects.equals(channel1.name(), channel));
+    }
+
+    private static void onCreateChannel(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketByteBuf buf, PacketSender responseSender) {
+        String channel = buf.readString();
+
+        var channelManager = ChannelManagerPersistence.get(player.getWorld());
+
+        channelManager.add(new Channel(channel, null));
     }
 }

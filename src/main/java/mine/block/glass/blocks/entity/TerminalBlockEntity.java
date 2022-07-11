@@ -75,10 +75,15 @@ public class TerminalBlockEntity extends BlockEntity implements ExtendedScreenHa
 
     @Override
     public ScreenHandler createMenu(int syncId, PlayerInventory inventory, PlayerEntity player) {
+
         PacketByteBuf buf = PacketByteBufs.create();
+
         buf.writeBlockPos(this.getPos());
-        ChannelManagerPersistence channelManager = ChannelManagerPersistence.MANAGERS.get(player.getWorld());
+
+        ChannelManagerPersistence channelManager = ChannelManagerPersistence.get(player.getWorld());
+
         buf.writeNbt(channelManager.writeNbt(new NbtCompound()));
+        System.out.println(channelManager.writeNbt(new NbtCompound()));
 
         return new TerminalBlockGUI(syncId, inventory, buf);
     }
@@ -86,7 +91,9 @@ public class TerminalBlockEntity extends BlockEntity implements ExtendedScreenHa
     @Override
     public void writeScreenOpeningData(ServerPlayerEntity player, PacketByteBuf buf) {
         buf.writeBlockPos(this.getPos());
-        ChannelManagerPersistence channelManager = ChannelManagerPersistence.MANAGERS.get(player.getWorld());
+        ChannelManagerPersistence channelManager = ChannelManagerPersistence.get(player.getWorld());
         buf.writeNbt(channelManager.writeNbt(new NbtCompound()));
+
+        System.out.println(channelManager.writeNbt(new NbtCompound()));
     }
 }
