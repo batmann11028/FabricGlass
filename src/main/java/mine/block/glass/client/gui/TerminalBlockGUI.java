@@ -9,15 +9,18 @@ import io.github.cottonmc.cotton.gui.widget.data.Insets;
 import mine.block.glass.GLASS;
 import mine.block.glass.blocks.entity.TerminalBlockEntity;
 import mine.block.glass.components.GLASSComponents;
+import mine.block.glass.server.GLASSPackets;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.screenhandler.v1.ScreenHandlerRegistry;
 import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.screen.ScreenHandlerContext;
 import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.Pair;
 import net.minecraft.util.math.BlockPos;
 
 import javax.annotation.Nullable;
@@ -48,36 +51,27 @@ public class TerminalBlockGUI extends SyncedGuiDescription {
         var channels = GLASSComponents.CHANNELS.get(world).getValue();
 
         if(channels.isEmpty()) {
-            channels.add("Default");
-            GLASSComponents.CHANNELS.get(world).setValue(channels);
+            ClientPlayNetworking.send(GLASSPackets.POPULATE_DEFAULT_CHANNEL.ID, PacketByteBufs.empty());
             GLASSComponents.CHANNELS.sync(world);
         }
 
-        var linked_channels = GLASSComponents.LINKED_CHANNELS.get(world);
+        GLASS.LOGGER.info("[GUI] " + GLASSComponents.CHANNELS.get(world).getValue() + " [WORLD] " + world);
 
-        System.out.println(linked_channels.getValue().toString());
-
-        channelList = new WListPanel<>(channels, WButton::new, (String str, WButton btn) -> {
+        channelList = new WListPanel<>(GLASSComponents.CHANNELS.get(world).getValue(), WButton::new, (String str, WButton btn) -> {
 
             btn.setOnClick(() -> {
-                var _e = linked_channels.getValue();
-                _e.put(pos, btn.getLabel().getString());
-
-                linked_channels.setValue(_e);
-
-                btn.setEnabled(false);
-
                 PacketByteBuf buf = PacketByteBufs.create();
                 buf.writeBlockPos(pos);
                 buf.writeString(btn.getLabel().getString());
 
                 ClientPlayNetworking.send(new Identifier("glass", "terminal_channel_changed"), buf);
 
+                btn.setEnabled(false);
                 removeChannelButton.setEnabled(true);
             });
 
-            if(linked_channels.getValue().containsValue(str)) {
-                if(Objects.equals(linked_channels.getValue().get(this.pos), str)) {
+            if(GLASSComponents.LINKED_CHANNELS.get(world).contains(str)) {
+                if(Objects.requireNonNull(GLASSComponents.LINKED_CHANNELS.get(world).get(str)).getRight() == pos) {
                     btn.setEnabled(false);
                 }
             }
@@ -91,21 +85,19 @@ public class TerminalBlockGUI extends SyncedGuiDescription {
         removeChannelButton = new WButton();
 
         removeChannelButton.setOnClick(() -> {
-            var _e = linked_channels.getValue();
-            _e.remove(pos);
-
-            linked_channels.setValue(_e);
-
             PacketByteBuf buf = PacketByteBufs.create();
             buf.writeBlockPos(pos);
             buf.writeString("");
 
-            ClientPlayNetworking.send(new Identifier("glass", "terminal_channel_changed"), buf);
+            channelList.layout();
+
+            ClientPlayNetworking.send(GLASSPackets.TERMINAL_CHANNEL_CHANGED.ID, buf);
+            ClientPlayNetworking.send(GLASSPackets.REMOVE_LINKED_CHANNEL.ID, buf);
         });
 
         removeChannelButton.setLabel(Text.literal("Unlink From Channel"));
 
-        if(!linked_channels.getValue().containsKey(pos)) {
+        if(!GLASSComponents.LINKED_CHANNELS.get(world).contains(pos)) {
             removeChannelButton.setEnabled(false);
         }
 

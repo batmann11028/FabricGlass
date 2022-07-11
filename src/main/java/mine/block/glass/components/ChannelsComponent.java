@@ -13,14 +13,16 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.Objects;
 
-public class ChannelsComponent implements StringArrayComponent {
+public class ChannelsComponent implements ArrayComponent<String> {
 
     private final World provider;
-    public ArrayList<String> _value = new ArrayList<>();
+
 
     public ChannelsComponent(World world) {
         this.provider = world;
     }
+
+    private ArrayList<String> _value = new ArrayList<>();
 
     @Override
     public ArrayList<String> getValue() {
@@ -30,19 +32,16 @@ public class ChannelsComponent implements StringArrayComponent {
     @Override
     public void addValue(String value) {
         _value.add(value);
-        GLASSComponents.CHANNELS.sync(this.provider);
     }
 
     @Override
     public void setValue(ArrayList<String> value) {
         _value = value;
-        GLASSComponents.CHANNELS.sync(this.provider);
     }
 
     @Override
     public void removeValue(String value) {
         _value.remove(value);
-        GLASSComponents.CHANNELS.sync(GLASSComponents.CHANNELS);
     }
 
     @Override
@@ -56,6 +55,7 @@ public class ChannelsComponent implements StringArrayComponent {
 
     @Override
     public void writeToNbt(@NotNull NbtCompound tag) {
+        System.out.println("Begin Write Component (Channels) - val = " + _value.toString());
         NbtList list = new NbtList();
         for (String s : _value) {
             list.add(NbtString.of(s));
