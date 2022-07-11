@@ -2,7 +2,8 @@ package mine.block.glass.server;
 
 import mine.block.glass.GLASS;
 import mine.block.glass.blocks.entity.TerminalBlockEntity;
-import mine.block.glass.components.GLASSComponents;
+import mine.block.glass.persistence.Channel;
+import mine.block.glass.persistence.ChannelManagerPersistence;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
@@ -13,7 +14,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.Pair;
 import net.minecraft.util.math.BlockPos;
 
 import javax.annotation.Nullable;
@@ -70,57 +70,42 @@ public enum GLASSPackets {
                 terminal.channel = channel;
                 terminal.markDirty();
 
-                var arr = GLASSComponents.LINKED_CHANNELS.get(Objects.requireNonNull(entity.getWorld())).getValue();
+                var channelManager = ChannelManagerPersistence.MANAGERS.get(player.getWorld());
 
-                int index = -1;
-                for (Pair<String, BlockPos> pair : arr) {
-                    if(pair.getRight() == pos) {
-                        index = arr.indexOf(pair);
-                    }
-                }
+                channelManager.removeIf(channels -> channels.linkedBlock() == pos);
 
-                if(index != -1) {
-                    arr.remove(index);
-                }
-
-
-
-                arr.add(new Pair<>(channel, pos));
-
-                GLASSComponents.LINKED_CHANNELS.get(entity.getWorld()).setValue(arr);
-
-                GLASSComponents.LINKED_CHANNELS.sync(Objects.requireNonNull(entity.getWorld()));
+                channelManager.add(new Channel(channel, pos));
             }
         });
     }
 
-    private static void onRemoveLinkedChannel(MinecraftServer minecraftServer, ServerPlayerEntity serverPlayerEntity, ServerPlayNetworkHandler serverPlayNetworkHandler, PacketByteBuf packetByteBuf, PacketSender packetSender) {
-        BlockPos pos = packetByteBuf.readBlockPos();
+    private static void onRemoveLinkedChannel(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketByteBuf buf, PacketSender responseSender) {
+        BlockPos pos = buf.readBlockPos();
 
-        minecraftServer.executeSync(() -> {
-            var arr = GLASSComponents.LINKED_CHANNELS.get(Objects.requireNonNull(serverPlayerEntity.getWorld())).getValue();
+        server.executeSync(() -> {
+            var channelManager = ChannelManagerPersistence.MANAGERS.get(player.getWorld());
 
-            int index = -1;
-            for (Pair<String, BlockPos> pair : arr) {
-                if(pair.getRight() == pos) {
-                    index = arr.indexOf(pair);
-                }
+            var entity = player.getWorld().getBlockEntity(pos);
+
+            String cachedChannel = "";
+
+            if(entity instanceof TerminalBlockEntity terminal) {
+                cachedChannel = terminal.channel;
+                terminal.channel = "";
+                terminal.markDirty();
             }
 
-            arr.remove(index);
+            channelManager.removeIf(channels -> channels.linkedBlock() == pos);
+            channelManager.add(new Channel(cachedChannel, null));
 
-            GLASSComponents.LINKED_CHANNELS.get(serverPlayerEntity.getWorld()).setValue(arr);
-            GLASSComponents.LINKED_CHANNELS.sync(serverPlayerEntity.getWorld());
         });
     }
 
-    private static void onPopulateDefaultChannel(MinecraftServer minecraftServer, ServerPlayerEntity serverPlayerEntity, ServerPlayNetworkHandler serverPlayNetworkHandler, PacketByteBuf packetByteBuf, PacketSender packetSender) {
-        var channels = GLASSComponents.CHANNELS.get(serverPlayerEntity.getWorld()).getValue();
+    private static void onPopulateDefaultChannel(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketByteBuf buf, PacketSender responseSender) {
+        var channelManager = ChannelManagerPersistence.MANAGERS.get(player.getWorld());
 
-        if(channels.contains("Default")) return;
+        if(!channelManager.stream().filter(channel -> Objects.equals(channel.name(), "Default")).toList().isEmpty()) return;
 
-        channels.add("Default");
-        GLASSComponents.CHANNELS.get(serverPlayerEntity.getWorld()).setValue(channels);
-        GLASSComponents.CHANNELS.sync(serverPlayerEntity.getWorld());
+        channelManager.add(new Channel("Default", null));
     }
 }

@@ -24,8 +24,6 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
     modImplementation include("io.github.cottonmc:LibGui:${project.libgui_version}")
-    modImplementation include("dev.onyxstudios.cardinal-components-api:cardinal-components-base:${project.c_components_version}")
-    modImplementation include("dev.onyxstudios.cardinal-components-api:cardinal-components-world:${project.c_components_version}")
 }
 
 processResources {

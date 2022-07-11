@@ -52,6 +52,7 @@ public class TerminalBlock extends BlockWithEntity {
         ExtendedScreenHandlerFactory handlerFactory = (ExtendedScreenHandlerFactory) state.createScreenHandlerFactory(world, pos);
 
         player.openHandledScreen(handlerFactory);
+
         return ActionResult.SUCCESS;
     }
 

@@ -4,37 +4,35 @@ import io.github.cottonmc.cotton.gui.SyncedGuiDescription;
 import io.github.cottonmc.cotton.gui.widget.WButton;
 import io.github.cottonmc.cotton.gui.widget.WGridPanel;
 import io.github.cottonmc.cotton.gui.widget.WListPanel;
-import io.github.cottonmc.cotton.gui.widget.data.InputResult;
 import io.github.cottonmc.cotton.gui.widget.data.Insets;
 import mine.block.glass.GLASS;
-import mine.block.glass.blocks.entity.TerminalBlockEntity;
-import mine.block.glass.components.GLASSComponents;
+import mine.block.glass.persistence.Channel;
 import mine.block.glass.server.GLASSPackets;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.screenhandler.v1.ScreenHandlerRegistry;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtList;
 import net.minecraft.network.PacketByteBuf;
-import net.minecraft.screen.ScreenHandlerContext;
 import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.Pair;
 import net.minecraft.util.math.BlockPos;
 
 import javax.annotation.Nullable;
-import java.util.Objects;
+import java.util.ArrayList;
 
 public class TerminalBlockGUI extends SyncedGuiDescription {
-    public static final ScreenHandlerType<TerminalBlockGUI> SCREEN_HANDLER_TYPE = ScreenHandlerRegistry.registerExtended(new Identifier("glass", "terminal_screen"), (syncId, inventory, buf) -> new TerminalBlockGUI(syncId, inventory, buf));
+    public static final ScreenHandlerType<TerminalBlockGUI> SCREEN_HANDLER_TYPE = ScreenHandlerRegistry.registerExtended(new Identifier("glass", "terminal_screen"), TerminalBlockGUI::new);
 
     public BlockPos pos;
 
     private static final int WIDTH = 7;
     private static final int HEIGHT = 10;
 
-    private WListPanel<String, WButton> channelList;
+    private final WListPanel<Channel, WButton> channelList;
     private WButton removeChannelButton;
 
     public TerminalBlockGUI(int syncId, PlayerInventory playerInventory, PacketByteBuf context) {
@@ -48,35 +46,46 @@ public class TerminalBlockGUI extends SyncedGuiDescription {
 
         pos = context.readBlockPos();
 
-        var channels = GLASSComponents.CHANNELS.get(world).getValue();
+        NbtCompound nbt = context.readNbt();
 
-        if(channels.isEmpty()) {
-            ClientPlayNetworking.send(GLASSPackets.POPULATE_DEFAULT_CHANNEL.ID, PacketByteBufs.empty());
-            GLASSComponents.CHANNELS.sync(world);
+        ArrayList<Channel> channels = new ArrayList<>();
+
+        assert nbt != null;
+        NbtList _channels = nbt.getList("channels", NbtElement.COMPOUND_TYPE);
+
+        for (int i = 0; i < _channels.size(); i++) {
+            NbtCompound channel = _channels.getCompound(i);
+            @Nullable BlockPos bpos = (channel.contains("linked_pos")) ? null : BlockPos.fromLong(channel.getLong("linked_pos"));
+            Channel channel1 = new Channel(channel.getString("name"), bpos);
+            channels.add(channel1);
         }
 
-        GLASS.LOGGER.info("[GUI] " + GLASSComponents.CHANNELS.get(world).getValue() + " [WORLD] " + world);
+        if(channels.size() == 0) {
+            ClientPlayNetworking.send(GLASSPackets.POPULATE_DEFAULT_CHANNEL.ID, PacketByteBufs.empty());
 
-        channelList = new WListPanel<>(GLASSComponents.CHANNELS.get(world).getValue(), WButton::new, (String str, WButton btn) -> {
+            channels.add(new Channel("Default", null));
+        }
+
+        GLASS.LOGGER.info("[GUI-CHANNELS] " + channels + " [WORLD] " + world);
+
+        channelList = new WListPanel<>(channels, WButton::new, (Channel channel, WButton btn) -> {
 
             btn.setOnClick(() -> {
                 PacketByteBuf buf = PacketByteBufs.create();
                 buf.writeBlockPos(pos);
                 buf.writeString(btn.getLabel().getString());
 
-                ClientPlayNetworking.send(new Identifier("glass", "terminal_channel_changed"), buf);
+                ClientPlayNetworking.send(GLASSPackets.TERMINAL_CHANNEL_CHANGED.ID, buf);
 
                 btn.setEnabled(false);
                 removeChannelButton.setEnabled(true);
             });
 
-            if(GLASSComponents.LINKED_CHANNELS.get(world).contains(str)) {
-                if(Objects.requireNonNull(GLASSComponents.LINKED_CHANNELS.get(world).get(str)).getRight() == pos) {
-                    btn.setEnabled(false);
-                }
+            if(channel.linkedBlock() == pos) {
+                btn.setEnabled(false);
             }
 
-            btn.setLabel(Text.literal(str));
+            btn.setLabel(Text.literal(channel.name()));
         });
 
         channelList.setListItemHeight(18);
@@ -91,13 +100,12 @@ public class TerminalBlockGUI extends SyncedGuiDescription {
 
             channelList.layout();
 
-            ClientPlayNetworking.send(GLASSPackets.TERMINAL_CHANNEL_CHANGED.ID, buf);
             ClientPlayNetworking.send(GLASSPackets.REMOVE_LINKED_CHANNEL.ID, buf);
         });
 
         removeChannelButton.setLabel(Text.literal("Unlink From Channel"));
 
-        if(!GLASSComponents.LINKED_CHANNELS.get(world).contains(pos)) {
+        if(channels.stream().filter(channel -> channel.linkedBlock() == pos).toList().isEmpty()) {
             removeChannelButton.setEnabled(false);
         }
 

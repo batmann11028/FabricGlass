@@ -1,21 +1,13 @@
 package mine.block.glass;
 
 import mine.block.glass.blocks.GLASSBlocks;
-import mine.block.glass.blocks.TerminalBlock;
-import mine.block.glass.blocks.entity.TerminalBlockEntity;
-import mine.block.glass.components.GLASSComponents;
-import mine.block.glass.components.LinkedChannelsComponent;
 import mine.block.glass.items.GLASSItems;
+import mine.block.glass.persistence.ChannelManagerPersistence;
 import mine.block.glass.server.GLASSPackets;
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.client.MinecraftClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Objects;
 
 public class GLASS implements ModInitializer {
 
@@ -33,5 +25,7 @@ public class GLASS implements ModInitializer {
         for (GLASSPackets packet : GLASSPackets.values()) {
             packet.register();
         }
+
+        ChannelManagerPersistence.init();
     }
 }
