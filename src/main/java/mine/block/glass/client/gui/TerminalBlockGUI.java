@@ -5,6 +5,7 @@ import io.github.cottonmc.cotton.gui.widget.*;
 import io.github.cottonmc.cotton.gui.widget.data.Insets;
 import mine.block.glass.GLASS;
 import mine.block.glass.client.gui.widgets.WButtonTooltip;
+import mine.block.glass.client.gui.widgets.WPortalFrame;
 import mine.block.glass.persistence.Channel;
 import mine.block.glass.persistence.ChannelManagerPersistence;
 import mine.block.glass.server.GLASSPackets;
@@ -24,6 +25,7 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -76,6 +78,12 @@ public class TerminalBlockGUI extends SyncedGuiDescription {
         GLASS.LOGGER.info("[GUI-CHANNELS] " + channels + " [WORLD] " + world);
 
         ArrayList<WButtonTooltip> channelButtons = new ArrayList<>();
+
+        WPortalFrame previewFrame = new WPortalFrame(this.world.getRegistryKey(), new Vec3d(pos.getX(), pos.getY(), pos.getZ()));
+
+        previewFrame.setSize((WIDTH/2) - 5, HEIGHT - 120 - 5);
+
+        root.add(previewFrame, (WIDTH/2), 120, (WIDTH/2) - 5, HEIGHT - 120 - 5);
 
         WListPanel<Channel, WButtonTooltip> channelList = new WListPanel<>(channels, WButtonTooltip::new, (Channel channel, WButtonTooltip btn) -> {
 

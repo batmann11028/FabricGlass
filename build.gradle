@@ -15,6 +15,10 @@ repositories {
         name = 'Ladysnake Mods'
         url = 'https://ladysnake.jfrog.io/artifactory/mods'
     }
+    maven {
+        name = "Jitpack"
+        url = 'https://jitpack.io'
+    }
 }
 
 loom {
@@ -28,6 +32,16 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
     modImplementation include("io.github.cottonmc:LibGui:${project.libgui_version}")
+
+    include (modImplementation ("com.github.qouteall.ImmersivePortalsMod:imm_ptl_core:${project.immersive_version}"){
+        exclude(group: "net.fabricmc.fabric-api")
+        transitive(false)
+    })
+
+    include (modImplementation ("com.github.qouteall.ImmersivePortalsMod:q_misc_util:${project.immersive_version}"){
+        exclude(group: "net.fabricmc.fabric-api")
+        transitive(false)
+    })
 }
 
 processResources {

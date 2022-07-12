@@ -87,7 +87,15 @@ public class ProjectorBlockEntity extends ProjectionBlockBase implements Extende
     public static void tick(World world1, BlockPos pos, BlockState state1, ProjectorBlockEntity be) {
         be.tick();
 
+        boolean old = be.active;
+
         be.active = world1.isReceivingRedstonePower(pos);
+
+        if(old != be.active) {
+            if(be.active) {
+
+            }
+        }
 
         float rotationFactor = be.active ? (1.0F - ((float) be.fadeoutTime / FADEOUT_TIME)) : ((float) be.fadeoutTime / FADEOUT_TIME);
         be.rotationBeacon += 20F * rotationFactor;
