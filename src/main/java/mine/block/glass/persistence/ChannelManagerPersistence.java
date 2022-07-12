@@ -30,7 +30,7 @@ public class ChannelManagerPersistence extends PersistentState implements Collec
 
     private static final Logger LOGGER = LogManager.getLogger("ChannelManagerPersistence");
 
-    private final ArrayList<Channel> CHANNELS = new ArrayList<>();
+    public final ArrayList<Channel> CHANNELS = new ArrayList<>();
 
     @Override
     public NbtCompound writeNbt(NbtCompound nbt) {

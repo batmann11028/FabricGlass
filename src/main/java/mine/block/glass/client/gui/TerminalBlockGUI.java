@@ -4,12 +4,15 @@ import io.github.cottonmc.cotton.gui.SyncedGuiDescription;
 import io.github.cottonmc.cotton.gui.widget.*;
 import io.github.cottonmc.cotton.gui.widget.data.Insets;
 import mine.block.glass.GLASS;
+import mine.block.glass.client.gui.widgets.WButtonTooltip;
 import mine.block.glass.persistence.Channel;
 import mine.block.glass.persistence.ChannelManagerPersistence;
 import mine.block.glass.server.GLASSPackets;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.screenhandler.v1.ScreenHandlerRegistry;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -20,6 +23,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -98,6 +102,8 @@ public class TerminalBlockGUI extends SyncedGuiDescription {
 
                 btn.setEnabled(false);
                 unlinkChannelButton.setEnabled(true);
+
+                this.close(playerInventory.player);
             });
 
             if (channel.linkedBlock() != null) {
@@ -135,7 +141,6 @@ public class TerminalBlockGUI extends SyncedGuiDescription {
                             break;
                         }
                     }
-
                 }
             }
 

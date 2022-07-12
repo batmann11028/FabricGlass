@@ -10,6 +10,7 @@
   "contact": {},
   "license": "MIT",
   "icon": "assets/glass/icon.png",
+  "accessWidener": "glass.accesswidener",
   "environment": "*",
   "entrypoints": {
     "client": [
@@ -18,17 +19,8 @@
     "server": [
       "mine.block.glass.server.GLASSServer"
     ],
-    "cardinal-components": [
-      "mine.block.glass.components.GLASSComponents"
-    ],
     "main": [
       "mine.block.glass.GLASS"
-    ]
-  },
-  "custom": {
-    "cardinal-components": [
-      "glass:channels",
-      "glass:linked_channels"
     ]
   },
   "mixins": [

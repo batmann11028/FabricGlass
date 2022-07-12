@@ -1,20 +1,16 @@
 package mine.block.glass.blocks;
 
-import mine.block.glass.blocks.entity.TerminalBlockEntity;
-import mine.block.glass.persistence.Channel;
-import mine.block.glass.persistence.ChannelManagerPersistence;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import mine.block.glass.blocks.entity.ProjectorBlockEntity;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.BlockWithEntity;
 import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemPlacementContext;
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.state.StateManager;
+import net.minecraft.state.property.BooleanProperty;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
@@ -25,43 +21,40 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
-public class TerminalBlock extends BlockWithEntity {
-    protected TerminalBlock(Settings settings) {
-        super(settings);
-    }
+public class ProjectorBlock extends BlockWithEntity {
+
+    public static BooleanProperty POWERED = BooleanProperty.of("powered");
 
     private Direction _tempFacing = Direction.UP;
 
-    @Override
-    public BlockRenderType getRenderType(BlockState state) {
-        return BlockRenderType.MODEL;
+    protected ProjectorBlock(Settings settings) {
+        super(settings);
+        setDefaultState(getDefaultState().with(POWERED, false));
     }
 
     @Override
+    protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
+        builder.add(POWERED);
+    }
+
+    @Nullable
+    @Override
     public BlockEntity createBlockEntity(BlockPos pos, BlockState state) {
-        var entity = new TerminalBlockEntity(pos, state);
+        ProjectorBlockEntity entity = new ProjectorBlockEntity(pos, state);
         entity.facing = _tempFacing;
         return entity;
     }
 
     @Override
-    public void onBreak(World world, BlockPos pos, BlockState state, PlayerEntity player) {
-        super.onBreak(world, pos, state, player);
+    public void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
 
-        if(world.isClient) return;
-
-        ChannelManagerPersistence persistence = ChannelManagerPersistence.get(world);
-
-        for (Channel channel : persistence.CHANNELS) {
-            if(channel.linkedBlock() != null) {
-                if(channel.linkedBlock().asLong() == pos.asLong()) {
-                    persistence.remove(channel);
-
-                    // Unlink if break.
-                    persistence.add(new Channel(channel.name(), null));
-                }
-            }
+        if(world.isReceivingRedstonePower(pos)) {
+            setDefaultState(state.with(POWERED, true));
+        } else {
+            setDefaultState(state.with(POWERED, false));
         }
+
+        super.neighborUpdate(state, world, pos, sourceBlock, sourcePos, notify);
     }
 
     @Override
@@ -78,10 +71,15 @@ public class TerminalBlock extends BlockWithEntity {
         return ActionResult.SUCCESS;
     }
 
+    @Override
+    public BlockRenderType getRenderType(BlockState state) {
+        return BlockRenderType.MODEL;
+    }
+
     @Nullable
     @Override
     public BlockState getPlacementState(ItemPlacementContext ctx) {
-        _tempFacing = Direction.getLookDirectionForAxis(Objects.requireNonNull(ctx.getPlayer()), ctx.getPlayerLookDirection().getAxis());
+        _tempFacing = Direction.getLookDirectionForAxis(Objects.requireNonNull(ctx.getPlayer()), ctx.getPlayerLookDirection().getAxis()).getOpposite();
         return super.getPlacementState(ctx);
     }
 }

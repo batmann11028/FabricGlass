@@ -1,6 +1,7 @@
 package mine.block.glass.server;
 
 import mine.block.glass.GLASS;
+import mine.block.glass.blocks.entity.ProjectorBlockEntity;
 import mine.block.glass.blocks.entity.TerminalBlockEntity;
 import mine.block.glass.persistence.Channel;
 import mine.block.glass.persistence.ChannelManagerPersistence;
@@ -26,7 +27,9 @@ public enum GLASSPackets {
     POPULATE_DEFAULT_CHANNEL(null, GLASSPackets::onPopulateDefaultChannel, null),
 
     DELETE_CHANNEL(null, GLASSPackets::onDeleteChannel, null),
-    CREATE_CHANNEL(null, GLASSPackets::onCreateChannel, null)
+    CREATE_CHANNEL(null, GLASSPackets::onCreateChannel, null),
+
+    PROJECTOR_CHANNEL_CHANGED(null, GLASSPackets::onProjectorChannelChanged, null)
 
     ;
 
@@ -96,6 +99,20 @@ public enum GLASSPackets {
                 channelManager.removeIf(channels -> channels.name().equals(channel));
 
                 channelManager.add(new Channel(channel, pos));
+            }
+        });
+    }
+
+    private static void onProjectorChannelChanged(MinecraftServer server, ServerPlayerEntity player, ServerPlayNetworkHandler handler, PacketByteBuf buf, PacketSender responseSender) {
+        BlockPos pos = buf.readBlockPos();
+        String channel = buf.readString();
+
+        server.executeSync(() -> {
+            var entity = player.getWorld().getBlockEntity(pos);
+
+            if(entity instanceof ProjectorBlockEntity projector) {
+                projector.channel = channel;
+                projector.markDirty();
             }
         });
     }
