@@ -1,3 +1,10 @@
 accessWidener    v1    named
 accessible    method    net/minecraft/client/render/Camera    setPos    (DDD)V
 accessible    method    net/minecraft/client/render/Camera    setRotation    (FF)V
+accessible    class    net/minecraft/client/render/WorldRenderer
+accessible    field    net/minecraft/client/render/WorldRenderer    world    Lnet/minecraft/client/world/ClientWorld;
+accessible    method    net/minecraft/client/render/WorldRenderer    addParticle    (Lnet/minecraft/particle/ParticleEffect;ZDDDDDD)V
+accessible    method    net/minecraft/client/render/WorldRenderer    addParticle    (Lnet/minecraft/particle/ParticleEffect;ZZDDDDDD)V
+accessible    method    net/minecraft/client/render/WorldRenderer    addParticle    (Lnet/minecraft/particle/ParticleEffect;DDDDDD)V
+accessible    method    net/minecraft/client/render/WorldRenderer    spawnParticle    (Lnet/minecraft/particle/ParticleEffect;ZDDDDDD)Lnet/minecraft/client/particle/Particle;
+accessible    method    net/minecraft/client/render/WorldRenderer    spawnParticle    (Lnet/minecraft/particle/ParticleEffect;ZZDDDDDD)Lnet/minecraft/client/particle/Particle;

@@ -9,7 +9,9 @@ import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.BlockWithEntity;
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
@@ -20,13 +22,12 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
-import org.jetbrains.annotations.Nullable;
+import net.minecraft.world.World;
 
-public class ProjectorBlockEntity extends BlockEntity implements ExtendedScreenHandlerFactory {
+public class ProjectorBlockEntity extends ProjectionBlockBase implements ExtendedScreenHandlerFactory {
     public static BlockEntityType<ProjectorBlockEntity> BLOCK_ENTITY_TYPE = FabricBlockEntityTypeBuilder.create(ProjectorBlockEntity::new, GLASSBlocks.PROJECTOR).build();
 
     public Direction facing = Direction.UP;
-    public String channel = "";
 
     public float rotationBeacon, rotationBeaconPrev;
     public int wirelessTime;
@@ -41,6 +42,7 @@ public class ProjectorBlockEntity extends BlockEntity implements ExtendedScreenH
         tag.putFloat("rotationBeacon", rotationBeacon);
         tag.putFloat("rotationBeaconPrev", rotationBeaconPrev);
         tag.putString("channel", channel);
+        super.writeNbt(tag);
     }
 
     @Override
@@ -49,6 +51,8 @@ public class ProjectorBlockEntity extends BlockEntity implements ExtendedScreenH
         channel = tag.getString("channel");
         rotationBeacon = tag.getFloat("rotationBeacon");
         rotationBeaconPrev = tag.getFloat("rotationBeaconPrev");
+
+        super.readNbt(tag);
     }
 
     @Override
@@ -76,5 +80,28 @@ public class ProjectorBlockEntity extends BlockEntity implements ExtendedScreenH
         buf.writeString(channel);
         buf.writeBlockPos(pos);
         buf.writeNbt(channelManager.writeNbt(new NbtCompound()));
+    }
+
+
+
+    public static void tick(World world1, BlockPos pos, BlockState state1, ProjectorBlockEntity be) {
+        be.tick();
+
+        be.active = world1.isReceivingRedstonePower(pos);
+
+        float rotationFactor = be.active ? (1.0F - ((float) be.fadeoutTime / FADEOUT_TIME)) : ((float) be.fadeoutTime / FADEOUT_TIME);
+        be.rotationBeacon += 20F * rotationFactor;
+        be.rotationBeaconPrev = be.rotationBeacon;
+
+        // TODO: Wireless in future update?
+
+//        if(be.active && !be.wirelessPos.isEmpty())
+//        {
+//            wirelessTime++;
+//        }
+//        else
+//        {
+//            wirelessTime = 0;
+//        }
     }
 }
