@@ -11,10 +11,12 @@ import net.minecraft.util.registry.Registry;
 public class GLASSItems {
     public static final BlockItem TERMINAL = new BlockItem(GLASSBlocks.TERMINAL, new FabricItemSettings().group(ItemGroup.REDSTONE));
     public static final BlockItem PROJECTOR = new BlockItem(GLASSBlocks.PROJECTOR, new FabricItemSettings().group(ItemGroup.REDSTONE));
+    public static final BlockItem PROJECTION_PANEL = new BlockItem(GLASSBlocks.PROJECTION_PANEL, new FabricItemSettings().group(ItemGroup.REDSTONE));
 
     public static void init() {
         register("terminal", TERMINAL);
         register("projector", PROJECTOR);
+        register("projection_panel", PROJECTION_PANEL);
     }
 
     public static void initClient() {

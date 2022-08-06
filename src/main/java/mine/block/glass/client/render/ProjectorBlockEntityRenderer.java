@@ -1,5 +1,6 @@
 package mine.block.glass.client.render;
 
+import mine.block.glass.blocks.ProjectorBlock;
 import mine.block.glass.blocks.entity.ProjectorBlockEntity;
 import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
@@ -17,7 +18,7 @@ import net.minecraft.util.math.Quaternion;
 
 import java.util.Objects;
 
-public class ProjectorBlockEntityRenderer implements BlockEntityRenderer<ProjectorBlockEntity> {
+public class ProjectorBlockEntityRenderer extends ProjectionBlockRenderer<ProjectorBlockEntity> {
 
     public ProjectorBlockEntityRenderer(BlockEntityRendererFactory.Context ctx) {}
 
@@ -76,5 +77,7 @@ public class ProjectorBlockEntityRenderer implements BlockEntityRenderer<Project
                 OverlayTexture.DEFAULT_UV);
 
         matrices.pop();
+
+        super.render(entity, tickDelta, matrices, vertexConsumers, light, overlay);
     }
 }

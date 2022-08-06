@@ -35,11 +35,12 @@ public class WPortalFrame extends WWidget {
 
     @Override
     public void paint(MatrixStack matrices, int x, int y, int mouseX, int mouseY) {
-
         if(viewingPosition == null) return;
         if(framebuffer == null) {
             this.framebuffer = new SimpleFramebuffer(getWidth(), getHeight(), true, true);
         }
+
+        matrices.push();
 
         double t1 = CHelper.getSmoothCycles(503);
         double t2 = CHelper.getSmoothCycles(197);

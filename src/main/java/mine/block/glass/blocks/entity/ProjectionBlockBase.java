@@ -1,8 +1,11 @@
 package mine.block.glass.blocks.entity;
 
+import mine.block.glass.blocks.GLASSBlocks;
+import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityType;
+import net.minecraft.entity.EntityType;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -13,6 +16,7 @@ import java.util.HashSet;
 import java.util.Objects;
 
 public class ProjectionBlockBase extends BlockEntity {
+    public static BlockEntityType<ProjectionBlockBase> BLOCK_ENTITY_TYPE = FabricBlockEntityTypeBuilder.create(ProjectionBlockBase::new, GLASSBlocks.PROJECTOR).build();
 
     public static final HashMap<Direction, ArrayList<Direction>> PROPAGATION_FACES = new HashMap<>();
     static
@@ -68,8 +72,12 @@ public class ProjectionBlockBase extends BlockEntity {
     }
 
 
-    public ProjectionBlockBase(BlockEntityType<?> type, BlockPos pos, BlockState state) {
-        super(type, pos, state);
+    public ProjectionBlockBase(BlockEntityType<?> entityType, BlockPos pos, BlockState state) {
+        super(entityType, pos, state);
+    }
+
+    public ProjectionBlockBase(BlockPos pos, BlockState state) {
+        super(BLOCK_ENTITY_TYPE, pos, state);
     }
 
     public void tick() {
